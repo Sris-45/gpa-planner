@@ -117,9 +117,10 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-achievable_gpas = [round(6 + 0.09*i,2) for i in range(45)]  # 6 → 10
-achievable_gpas = [g for g in achievable_gpas if g >= 8.00]   # start from 8
-target = st.select_slider("Target GPA", options=achievable_gpas, value=8.00)
+# Achievable GPA list from 6 → 10 (multiples of 0.09)
+achievable_gpas = [round(6 + 0.09*i, 2) for i in range(45)]
+achievable_gpas = [g for g in achievable_gpas if g >= 8.00]  # start from 8
+target = st.select_slider("Target GPA", options=achievable_gpas, value=achievable_gpas[0])
 st.write(f"Selected target GPA: **{target}**")
 
 # -------------------- LOCKED SUBJECTS --------------------
@@ -141,7 +142,7 @@ if st.button("Show me the easiest paths", use_container_width=True):
             results.append((achieved, effort, temp))
 
     if not results:
-        # Include both fixed and modifiable subjects
+        # Maximum achievable GPA with current constraints
         all_combos = product(*[range(st.session_state.gpas[s], 11) for s in modifiable])
         max_gpa = 0
         for combo in all_combos:
@@ -168,7 +169,7 @@ if st.button("Show me the easiest paths", use_container_width=True):
                 if diff > 0:
                     st.write(f"• **{s}** → {dist[s]} (+{diff})")
 
-        # Dropdown for all possible combinations
+        # Dropdown for all combinations
         all_options = [f"Option {i+1}: GPA {ach}, Effort {eff}" for i, (ach, eff, _) in enumerate(results)]
         selected_option = st.selectbox("See all possible strategies", all_options)
         sel_idx = all_options.index(selected_option)
