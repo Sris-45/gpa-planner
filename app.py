@@ -198,7 +198,7 @@ st.write(f"Selected target GPA: **{target}**")
 
 # -------------------- LOCKED SUBJECTS --------------------
 fixed_subjects = st.multiselect(
-    "Lock subjects you don’t want to push",
+    "Select subjects to Lock",
     [s for s, _ in subjects]
 )
 
