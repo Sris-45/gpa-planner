@@ -141,21 +141,43 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-# -------------------- TARGET PLANNER --------------------
+# -------------------- TARGET GPA SLIDER --------------------
 st.markdown("""
 <div class="card">
 <h3>Target GPA</h3>
-<p class="subtle">Higher targets require more effort</p>
+<p class="subtle">Pick a target from achievable values</p>
 </div>
 """, unsafe_allow_html=True)
 
-target = st.slider(
+# Precompute achievable GPAs (multiples based on credits)
+modifiable_subjects = [s for s, _ in subjects]
+all_gpa_values = set()
+
+for combo in product(range(0, 11), repeat=len(modifiable_subjects)):
+    total = sum(combo[i] * subjects_dict[modifiable_subjects[i]] for i in range(len(modifiable_subjects)))
+    gpa = round(total / total_credits, 2)
+    all_gpa_values.add(gpa)
+
+# Only keep GPAs >= 6
+achievable_gpas = sorted([g for g in all_gpa_values if g >= 6])
+if not achievable_gpas:
+    achievable_gpas = [6]  # fallback
+
+# Slider index starts from first achievable GPA ≥6
+start_index = 0
+
+target_index = st.slider(
     "Target GPA",
-    0.0, 10.0,
-    value=max(7.5, current_gpa),
-    step=0.1
+    0, len(achievable_gpas) - 1,
+    value=start_index,
+    step=1
 )
 
+# Map slider index to actual GPA
+target = achievable_gpas[target_index]
+st.write(f"Selected target GPA: **{target}**")
+
+# -------------------- LOCKED SUBJECTS --------------------
 fixed_subjects = st.multiselect(
     "Lock subjects you don’t want to push",
     [s for s, _ in subjects]
@@ -163,44 +185,26 @@ fixed_subjects = st.multiselect(
 
 # -------------------- OPTIMIZATION --------------------
 if st.button("🚀 Show me the easiest way", use_container_width=True):
-
     modifiable = [s for s, _ in subjects if s not in fixed_subjects]
     ranges = [range(st.session_state.gpas[s], 11) for s in modifiable]
 
     results = []
-
     for combo in product(*ranges):
         temp = st.session_state.gpas.copy()
         for i, s in enumerate(modifiable):
             temp[s] = combo[i]
-
-        achieved = round(
-            sum(temp[s] * subjects_dict[s] for s in subjects_dict)
-            / total_credits, 2
-        )
-
+        achieved = round(sum(temp[s] * subjects_dict[s] for s in subjects_dict) / total_credits, 2)
         if achieved >= target:
-            effort = sum(
-                (temp[s] - st.session_state.gpas[s]) * subjects_dict[s]
-                for s in modifiable
-            )
+            effort = sum((temp[s] - st.session_state.gpas[s]) * subjects_dict[s] for s in modifiable)
             results.append((achieved, effort, temp))
 
     if not results:
-        st.error("❌ Target not achievable with current constraints.")
+        max_gpa = max(all_gpa_values)
+        st.info(f"💡 Maximum achievable GPA with current constraints: **{max_gpa}**")
     else:
         results.sort(key=lambda x: x[1])
-        st.success("✅ Best possible strategy")
-
         ach, eff, dist = results[0]
-
-        st.markdown(f"""
-        <div class="card">
-        <h3>Final GPA: {ach}</h3>
-        <p class="subtle">Extra effort required: {eff}</p>
-        </div>
-        """, unsafe_allow_html=True)
-
+        st.success(f"✅ Best possible GPA: {ach} (Extra effort: {eff})")
         for s, _ in subjects:
             diff = dist[s] - st.session_state.gpas[s]
             if diff > 0:
