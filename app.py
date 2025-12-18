@@ -149,7 +149,7 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Achievable GPAs from 6.00 up to 10.00 (mobile-friendly)
+# Full achievable GPAs list
 achievable_gpas = [
     6.00, 6.09, 6.18, 6.27, 6.36, 6.45, 6.55, 6.64, 6.73, 6.82, 6.91, 7.00,
     7.09, 7.18, 7.27, 7.36, 7.45, 7.55, 7.64, 7.73, 7.82, 7.91, 8.00,
@@ -157,14 +157,18 @@ achievable_gpas = [
     9.09, 9.18, 9.27, 9.36, 9.45, 9.55, 9.64, 9.73, 9.82, 9.91, 10.00
 ]
 
-# Select slider shows actual GPA numbers for mobile-friendly UI
+# Slice the list to start from 7.00
+achievable_gpas = [g for g in achievable_gpas if g >= 7.00]
+
+# Select slider shows actual GPA numbers
 target = st.select_slider(
     "Target GPA",
     options=achievable_gpas,
-    value=6.00
+    value=7.00
 )
 
 st.write(f"Selected target GPA: **{target}**")
+
 
 # -------------------- LOCKED SUBJECTS --------------------
 fixed_subjects = st.multiselect(
