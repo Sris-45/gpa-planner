@@ -117,9 +117,15 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Achievable GPA list from 6 → 10 (multiples of 0.09)
-achievable_gpas = [round(6 + 0.09*i, 2) for i in range(45)]
-achievable_gpas = [g for g in achievable_gpas if g >= 8.00]  # start from 8
+# Achievable GPA list from 6 → 10 in multiples of 0.09 (precisely defined)
+raw_gpas = [6.00, 6.09, 6.18, 6.27, 6.36, 6.45, 6.55, 6.64, 6.73, 6.82, 6.91,
+            7.00, 7.09, 7.18, 7.27, 7.36, 7.45, 7.55, 7.64, 7.73, 7.82, 7.91,
+            8.00, 8.09, 8.18, 8.27, 8.36, 8.45, 8.55, 8.64, 8.73, 8.82, 8.91,
+            9.00, 9.09, 9.18, 9.27, 9.36, 9.45, 9.55, 9.64, 9.73, 9.82, 9.91, 10.00]
+
+achievable_gpas = [float(f"{g:.2f}") for g in raw_gpas if g >= 8.00]  # start from 8
+
+# Slider uses exact list values
 target = st.select_slider("Target GPA", options=achievable_gpas, value=achievable_gpas[0])
 st.write(f"Selected target GPA: **{target}**")
 
