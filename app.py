@@ -53,7 +53,7 @@ course = st.radio("Course", ["BMS", "BBA FIA"], horizontal=True)
 elective_1 = st.radio("Elective Slot 1", ["Entrepreneurship Essentials", "Python Programming"])
 elective_2 = st.radio("Elective Slot 2", ["Fit India", "Constitution"])
 
-# -------------------- SUBJECTS --------------------
+# -------------------- SUBJECT LIST --------------------
 subjects = [
     ("Financial Accounting & Analysis", 4),
     ("Statistics", 4),
@@ -63,20 +63,38 @@ subjects = [
     (elective_2, 2),
 ]
 
-subjects.insert(0, ("Fundamentals of Management", 4) if course == "BMS" else ("Microeconomics", 4))
+if course == "BMS":
+    subjects.insert(0, ("Fundamentals of Management", 4))
+else:
+    subjects.insert(0, ("Microeconomics", 4))
 
 subjects_dict = dict(subjects)
 total_credits = sum(c for _, c in subjects)
+current_subject_names = [s for s, _ in subjects]
 
-# -------------------- SESSION STATE --------------------
+# -------------------- SESSION STATE SYNC (CRITICAL FIX) --------------------
 if "gpas" not in st.session_state:
-    st.session_state.gpas = {s: 6 for s, _ in subjects}
+    st.session_state.gpas = {}
+
+# Add missing subjects
+for s in current_subject_names:
+    if s not in st.session_state.gpas:
+        st.session_state.gpas[s] = 6
+
+# Remove subjects that no longer exist
+for s in list(st.session_state.gpas.keys()):
+    if s not in current_subject_names:
+        del st.session_state.gpas[s]
 
 # -------------------- GPA INPUT --------------------
 st.markdown("<div class='card'><h3>Enter subject GPAs</h3></div>", unsafe_allow_html=True)
 
 for sub, credits in subjects:
-    st.markdown(f"<div class='card'><span class='badge'>{credits} credits</span><br><strong>{sub}</strong>", unsafe_allow_html=True)
+    st.markdown(
+        f"<div class='card'><span class='badge'>{credits} credits</span><br><strong>{sub}</strong>",
+        unsafe_allow_html=True
+    )
+
     st.session_state.gpas[sub] = st.slider(
         "",
         0, 10,
@@ -84,11 +102,15 @@ for sub, credits in subjects:
         step=1,
         key=sub
     )
+
     st.markdown("</div>", unsafe_allow_html=True)
 
-# -------------------- CURRENT GPA --------------------
+# -------------------- GPA CALC --------------------
 def calc_gpa(dist):
-    return round(sum(dist[s] * subjects_dict[s] for s in subjects_dict) / total_credits, 2)
+    return round(
+        sum(dist[s] * subjects_dict[s] for s in subjects_dict) / total_credits,
+        2
+    )
 
 current_gpa = calc_gpa(st.session_state.gpas)
 
@@ -113,24 +135,24 @@ st.markdown("""
 <div class='card'>
 <h3>Lock subjects</h3>
 <p class='subtle'>
-Lock subjects whose GPA you want to keep fixed.  
-The planner will adjust only the remaining subjects to reach your target.
+Lock subjects whose GPA you want to keep as they are.  
+The planner will work out how the remaining subjects can be adjusted to reach your target.
 </p>
 </div>
 """, unsafe_allow_html=True)
 
 fixed_subjects = st.multiselect(
     "Select subjects to lock",
-    [s for s, _ in subjects]
+    current_subject_names
 )
 
 # -------------------- OPTIMIZATION --------------------
 if st.button("Show me the easiest paths", use_container_width=True):
 
-    modifiable = [s for s, _ in subjects if s not in fixed_subjects]
+    modifiable = [s for s in current_subject_names if s not in fixed_subjects]
     ranges = [range(st.session_state.gpas[s], 11) for s in modifiable]
 
-    best_results = []
+    results = []
     max_possible = 0
 
     for combo in product(*ranges):
@@ -146,20 +168,23 @@ if st.button("Show me the easiest paths", use_container_width=True):
                 (temp[s] - st.session_state.gpas[s]) * subjects_dict[s]
                 for s in modifiable
             )
-            best_results.append((achieved, effort, temp))
+            results.append((achieved, effort, temp))
 
-    # -------- NOT ACHIEVABLE --------
-    if not best_results:
+    if not results:
         st.info(f"Maximum achievable GPA with current locks: **{max_possible}**")
 
-    # -------- ACHIEVABLE --------
     else:
-        best_results.sort(key=lambda x: x[1])
+        results.sort(key=lambda x: x[1])
         st.success("Top 3 easiest strategies")
 
-        for i, (gpa, effort, dist) in enumerate(best_results[:3], 1):
-            st.markdown(f"<div class='card'><strong>Option {i}</strong><br>Final GPA: {gpa} | Extra effort: {effort}</div>", unsafe_allow_html=True)
-            for s, _ in subjects:
+        for i, (gpa, effort, dist) in enumerate(results[:3], 1):
+            st.markdown(
+                f"<div class='card'><strong>Option {i}</strong><br>"
+                f"Final GPA: {gpa} | Extra effort: {effort}</div>",
+                unsafe_allow_html=True
+            )
+
+            for s in current_subject_names:
                 diff = dist[s] - st.session_state.gpas[s]
                 if diff > 0:
                     st.write(f"• **{s}** → {dist[s]} (+{diff})")
