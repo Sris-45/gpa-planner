@@ -149,32 +149,27 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Precompute achievable GPAs (multiples based on credits)
-modifiable_subjects = [s for s, _ in subjects]
-all_gpa_values = set()
+# Achievable GPAs from 6.00 up to 10.00
+achievable_gpas = [
+    6.00, 6.09, 6.18, 6.27, 6.36, 6.45, 6.55, 6.64, 6.73, 6.82, 6.91, 7.00,
+    7.09, 7.18, 7.27, 7.36, 7.45, 7.55, 7.64, 7.73, 7.82, 7.91, 8.00,
+    8.09, 8.18, 8.27, 8.36, 8.45, 8.55, 8.64, 8.73, 8.82, 8.91, 9.00,
+    9.09, 9.18, 9.27, 9.36, 9.45, 9.55, 9.64, 9.73, 9.82, 9.91, 10.00
+]
 
-for combo in product(range(0, 11), repeat=len(modifiable_subjects)):
-    total = sum(combo[i] * subjects_dict[modifiable_subjects[i]] for i in range(len(modifiable_subjects)))
-    gpa = round(total / total_credits, 2)
-    all_gpa_values.add(gpa)
-
-# Only keep GPAs >= 6
-achievable_gpas = sorted([g for g in all_gpa_values if g >= 6])
-if not achievable_gpas:
-    achievable_gpas = [6]  # fallback
-
-# Slider index starts from first achievable GPA ≥6
-start_index = 0
+# Slider index defaults to first element (6.00)
+slider_index = 0
 
 target_index = st.slider(
     "Target GPA",
     0, len(achievable_gpas) - 1,
-    value=start_index,
+    value=slider_index,
     step=1
 )
 
 # Map slider index to actual GPA
 target = achievable_gpas[target_index]
+
 st.write(f"Selected target GPA: **{target}**")
 
 # -------------------- LOCKED SUBJECTS --------------------
@@ -199,7 +194,9 @@ if st.button("🚀 Show me the easiest way", use_container_width=True):
             results.append((achieved, effort, temp))
 
     if not results:
-        max_gpa = max(all_gpa_values)
+        # Show maximum achievable GPA for positive feedback
+        max_gpa = max([round(sum(combo[i] * subjects_dict[modifiable[i]] for i in range(len(modifiable))) / total_credits, 2) 
+                       for combo in product(*[range(st.session_state.gpas[s], 11) for s in modifiable])], default=current_gpa)
         st.info(f"💡 Maximum achievable GPA with current constraints: **{max_gpa}**")
     else:
         results.sort(key=lambda x: x[1])
