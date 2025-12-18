@@ -8,14 +8,11 @@ st.set_page_config(
     layout="centered",
 )
 
-# -------------------- GLOBAL STYLES --------------------
+# -------------------- STYLES --------------------
 st.markdown("""
 <style>
 body { background-color: #0f1117; }
-.block-container {
-    padding-top: 1.2rem;
-    padding-bottom: 5rem;
-}
+.block-container { padding-top: 1.2rem; padding-bottom: 5rem; }
 .card {
     background: #161b22;
     border-radius: 18px;
@@ -41,39 +38,16 @@ body { background-color: #0f1117; }
 </style>
 """, unsafe_allow_html=True)
 
-# -------------------- COURSE SELECTION --------------------
-st.markdown("""
-<div class="card">
-<h3>Select your course</h3>
-<p class="subtle">Subjects will adjust automatically</p>
-</div>
-""", unsafe_allow_html=True)
+# -------------------- COURSE --------------------
+st.markdown("<div class='card'><h3>Select your course</h3></div>", unsafe_allow_html=True)
+course = st.radio("Course", ["BMS", "BBA FIA"], horizontal=True)
 
-course = st.radio(
-    "Course",
-    ["BMS", "BBA FIA"],
-    horizontal=True
-)
+# -------------------- ELECTIVES --------------------
+st.markdown("<div class='card'><h3>Choose electives</h3></div>", unsafe_allow_html=True)
+elective_1 = st.radio("Elective Slot 1", ["Entrepreneurship Essentials", "Python Programming"])
+elective_2 = st.radio("Elective Slot 2", ["Fit India", "Constitution"])
 
-# -------------------- ELECTIVE SELECTION --------------------
-st.markdown("""
-<div class="card">
-<h3>Choose your electives</h3>
-<p class="subtle">Pick one from each slot</p>
-</div>
-""", unsafe_allow_html=True)
-
-elective_1 = st.radio(
-    "Elective Slot 1",
-    ["Entrepreneurship Essentials", "Python Programming"]
-)
-
-elective_2 = st.radio(
-    "Elective Slot 2",
-    ["Fit India", "Constitution"]
-)
-
-# -------------------- SUBJECT DEFINITION --------------------
+# -------------------- SUBJECT STRUCTURE --------------------
 subjects = [
     ("Financial Accounting & Analysis", 4),
     ("Statistics", 4),
@@ -83,125 +57,84 @@ subjects = [
     (elective_2, 2),
 ]
 
-if course == "BMS":
-    subjects.insert(0, ("Fundamentals of Management", 4))
-else:
-    subjects.insert(0, ("Microeconomics", 4))
+subjects.insert(0, ("Fundamentals of Management", 4) if course == "BMS" else ("Microeconomics", 4))
 
-subjects_dict = dict(subjects)
-total_credits = sum(c for _, c in subjects)
+credits = dict(subjects)
+total_credits = sum(credits.values())
 
 # -------------------- SESSION STATE --------------------
 if "gpas" not in st.session_state:
-    st.session_state.gpas = {}
+    st.session_state.gpas = {s: 6 for s in credits}
 
-for s, _ in subjects:
-    st.session_state.gpas.setdefault(s, 6)
+# -------------------- INPUT --------------------
+st.markdown("<div class='card'><h3>Enter subject GPAs</h3></div>", unsafe_allow_html=True)
 
-# -------------------- GPA INPUT --------------------
-st.markdown("""
-<div class="card">
-<h3>Enter subject GPAs</h3>
-<p class="subtle">Tap carefully — sliders move in steps</p>
-</div>
-""", unsafe_allow_html=True)
-
-for sub, credits in subjects:
-    st.markdown(f"""
-    <div class="card">
-        <span class="badge">{credits} credits</span><br>
-        <strong>{sub}</strong>
-    """, unsafe_allow_html=True)
-
-    st.session_state.gpas[sub] = st.slider(
-        "",
-        0, 10,
-        st.session_state.gpas[sub],
-        step=1,
-        key=sub
-    )
-
+for s, c in subjects:
+    st.markdown(f"<div class='card'><span class='badge'>{c} credits</span><br><b>{s}</b>", unsafe_allow_html=True)
+    st.session_state.gpas[s] = st.slider("", 0, 10, st.session_state.gpas[s], step=1, key=s)
     st.markdown("</div>", unsafe_allow_html=True)
 
-# -------------------- GPA CALCULATION --------------------
-def final_gpa():
-    return round(
-        sum(st.session_state.gpas[s] * subjects_dict[s] for s in subjects_dict)
-        / total_credits,
-        2
-    )
+# -------------------- GPA FUNCTION --------------------
+def compute_gpa(gpas):
+    return round(sum(gpas[s] * credits[s] for s in credits) / total_credits, 2)
 
-current_gpa = final_gpa()
+current_gpa = compute_gpa(st.session_state.gpas)
 
-# -------------------- SNAPSHOT --------------------
 st.markdown(f"""
-<div class="card">
-<p class="subtle">Your current GPA</p>
-<div class="hero">{current_gpa}</div>
+<div class='card'>
+<p class='subtle'>Your current GPA</p>
+<div class='hero'>{current_gpa}</div>
 </div>
 """, unsafe_allow_html=True)
 
-# -------------------- TARGET PLANNER --------------------
-st.markdown("""
-<div class="card">
-<h3>Target GPA</h3>
-<p class="subtle">Higher targets require more effort</p>
-</div>
-""", unsafe_allow_html=True)
+# -------------------- VALID GPA TARGETS --------------------
+possible_totals = set()
+ranges = [range(0, 11)] * len(credits)
 
-target = st.slider(
-    "Target GPA",
-    0.0, 10.0,
-    value=max(7.5, current_gpa),
-    step=0.1
+for combo in product(*ranges):
+    total = sum(combo[i] * list(credits.values())[i] for i in range(len(combo)))
+    possible_totals.add(round(total / total_credits, 2))
+
+valid_targets = sorted(t for t in possible_totals if t >= current_gpa)
+
+# -------------------- TARGET SELECTION --------------------
+st.markdown("<div class='card'><h3>Select target GPA</h3></div>", unsafe_allow_html=True)
+
+target = st.selectbox(
+    "Target GPA (only valid values shown)",
+    valid_targets
 )
 
-fixed_subjects = st.multiselect(
-    "Lock subjects you don’t want to push",
-    [s for s, _ in subjects]
-)
+# -------------------- LOCK SUBJECTS --------------------
+fixed = st.multiselect("Lock subjects you don’t want to improve", list(credits.keys()))
 
 # -------------------- OPTIMIZATION --------------------
 if st.button("🚀 Show me the easiest way", use_container_width=True):
 
-    modifiable = [s for s, _ in subjects if s not in fixed_subjects]
+    modifiable = [s for s in credits if s not in fixed]
     ranges = [range(st.session_state.gpas[s], 11) for s in modifiable]
 
-    results = []
+    best = None
 
     for combo in product(*ranges):
         temp = st.session_state.gpas.copy()
         for i, s in enumerate(modifiable):
             temp[s] = combo[i]
 
-        achieved = round(
-            sum(temp[s] * subjects_dict[s] for s in subjects_dict)
-            / total_credits, 2
-        )
+        gpa = compute_gpa(temp)
+        if gpa >= target:
+            effort = sum((temp[s] - st.session_state.gpas[s]) * credits[s] for s in modifiable)
+            if best is None or effort < best[1]:
+                best = (gpa, effort, temp)
 
-        if achieved >= target:
-            effort = sum(
-                (temp[s] - st.session_state.gpas[s]) * subjects_dict[s]
-                for s in modifiable
-            )
-            results.append((achieved, effort, temp))
-
-    if not results:
-        st.error("❌ Target not achievable with current constraints.")
+    if best is None:
+        max_gpa = max(valid_targets)
+        st.info(f"💡 With current constraints, the highest achievable GPA is **{max_gpa}**.")
     else:
-        results.sort(key=lambda x: x[1])
-        st.success("✅ Best possible strategy")
+        gpa, effort, dist = best
+        st.success(f"✅ Best achievable GPA: {gpa}")
 
-        ach, eff, dist = results[0]
-
-        st.markdown(f"""
-        <div class="card">
-        <h3>Final GPA: {ach}</h3>
-        <p class="subtle">Extra effort required: {eff}</p>
-        </div>
-        """, unsafe_allow_html=True)
-
-        for s, _ in subjects:
+        for s in credits:
             diff = dist[s] - st.session_state.gpas[s]
             if diff > 0:
                 st.write(f"• **{s}** → {dist[s]} (+{diff})")
