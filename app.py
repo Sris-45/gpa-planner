@@ -157,14 +157,14 @@ achievable_gpas = [
     9.09, 9.18, 9.27, 9.36, 9.45, 9.55, 9.64, 9.73, 9.82, 9.91, 10.00
 ]
 
-# Slice the list to start from 7.00
-achievable_gpas = [g for g in achievable_gpas if g >= 7.00]
+# Slice the list to start from 8.00
+achievable_gpas = [g for g in achievable_gpas if g >= 8.00]
 
 # Select slider shows actual GPA numbers
 target = st.select_slider(
     "Target GPA",
     options=achievable_gpas,
-    value=7.00
+    value=8.00
 )
 
 st.write(f"Selected target GPA: **{target}**")
