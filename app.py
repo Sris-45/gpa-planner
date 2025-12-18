@@ -67,7 +67,6 @@ h3 { font-weight: 600; font-size: 20px; margin-bottom: 6px; }
 st.markdown("""
 <div class="card title-card">
 GPA Planner
-<p class="subtle">Plan and optimize your academic path effortlessly</p>
 </div>
 """, unsafe_allow_html=True)
 
