@@ -203,7 +203,7 @@ fixed_subjects = st.multiselect(
 )
 
 # -------------------- OPTIMIZATION --------------------
-if st.button("Show me the easiest path", use_container_width=True):
+if st.button("Show me the easiest paths", use_container_width=True):
     modifiable = [s for s, _ in subjects if s not in fixed_subjects]
     ranges = [range(st.session_state.gpas[s], 11) for s in modifiable]
 
@@ -218,14 +218,40 @@ if st.button("Show me the easiest path", use_container_width=True):
             results.append((achieved, effort, temp))
 
     if not results:
+        # Show maximum achievable GPA for positive feedback
         max_gpa = max([round(sum(combo[i] * subjects_dict[modifiable[i]] for i in range(len(modifiable))) / total_credits, 2)
                        for combo in product(*[range(st.session_state.gpas[s], 11) for s in modifiable])], default=current_gpa)
         st.info(f"Maximum achievable GPA with current constraints: **{max_gpa}**")
     else:
+        # Sort by extra effort
         results.sort(key=lambda x: x[1])
-        ach, eff, dist = results[0]
-        st.success(f"Best achievable GPA: {ach} (Extra effort: {eff})")
+
+        st.success(f"Top 3 achievable strategies:")
+
+        # Show top 3 options
+        for idx, (ach, eff, dist) in enumerate(results[:3], start=1):
+            st.markdown(f"""
+            <div class="card">
+            <strong>Option {idx}</strong><br>
+            Final GPA: {ach} &nbsp;&nbsp; | &nbsp;&nbsp; Extra effort: {eff}
+            </div>
+            """, unsafe_allow_html=True)
+
+            # Subject-wise changes
+            for s, _ in subjects:
+                diff = dist[s] - st.session_state.gpas[s]
+                if diff > 0:
+                    st.write(f"• **{s}** → {dist[s]} (+{diff})")
+
+        # -------------------- Dropdown for all combinations --------------------
+        all_options = [f"Option {i+1}: GPA {ach}, Effort {eff}" for i, (ach, eff, _) in enumerate(results)]
+        selected_option = st.selectbox("See all possible strategies", all_options)
+
+        # Show details of selected combination
+        sel_idx = all_options.index(selected_option)
+        _, _, sel_dist = results[sel_idx]
+        st.markdown("<div class='card'>Details:</div>", unsafe_allow_html=True)
         for s, _ in subjects:
-            diff = dist[s] - st.session_state.gpas[s]
+            diff = sel_dist[s] - st.session_state.gpas[s]
             if diff > 0:
-                st.write(f"• **{s}** → {dist[s]} (+{diff})")
+                st.write(f"• **{s}** → {sel_dist[s]} (+{diff})")
