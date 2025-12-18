@@ -218,10 +218,18 @@ if st.button("Show me the easiest paths", use_container_width=True):
             results.append((achieved, effort, temp))
 
     if not results:
-        # Show maximum achievable GPA for positive feedback
-        max_gpa = max([round(sum(combo[i] * subjects_dict[modifiable[i]] for i in range(len(modifiable))) / total_credits, 2)
-                       for combo in product(*[range(st.session_state.gpas[s], 11) for s in modifiable])], default=current_gpa)
-        st.info(f"Maximum achievable GPA with current constraints: **{max_gpa}**")
+    # Include both fixed and modifiable subjects
+    all_combos = product(*[range(st.session_state.gpas[s], 11) for s in modifiable])
+    max_gpa = 0
+    for combo in all_combos:
+        temp = st.session_state.gpas.copy()
+        for i, s in enumerate(modifiable):
+            temp[s] = combo[i]
+        achieved = round(sum(temp[s] * subjects_dict[s] for s in subjects_dict) / total_credits, 2)
+        if achieved > max_gpa:
+            max_gpa = achieved
+    st.info(f"Maximum achievable GPA with current constraints: **{max_gpa}**")
+
     else:
         # Sort by extra effort
         results.sort(key=lambda x: x[1])
